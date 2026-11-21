@@ -68,8 +68,8 @@ chown -R www-data:www-data /var/www/html/painel /var/www/html/phpmyadmin /var/li
 echo "[6/9] Importando Bancos de Dados Originais..."
 cd /tmp
 rm -f *.sql
-wget -q "https://raw.githubusercontent.com/Jeanroot/painel-cs-files/main/BancoDados/acessos.sql" -O acessos.sql
-wget -q "https://raw.githubusercontent.com/Jeanroot/painel-cs-files/main/BancoDados/geral.sql" -O geral.sql
+wget -q "https://github.com/Jeanroot/painel-cs-files/releases/download/v1.0/acessos.sql" -O acessos.sql
+wget -q "https://github.com/Jeanroot/painel-cs-files/releases/download/v1.0/geral.sql" -O geral.sql
 wget -q "https://github.com/Jeanroot/painel-cs-files/releases/download/v1.0/user.sql" -O user.sql
 
 for file in *.sql; do
