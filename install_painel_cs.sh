@@ -34,6 +34,9 @@ PHP_INI=$(find /etc/php/*/apache2/php.ini 2>/dev/null | head -n 1)
 if [ -n "$PHP_INI" ]; then
     sed -i 's/short_open_tag = Off/short_open_tag = On/g' "$PHP_INI"
     sed -i 's/display_errors = Off/display_errors = On/g' "$PHP_INI"
+    sed -i 's/upload_max_filesize = .*/upload_max_filesize = 2048M/' "$PHP_INI"
+    sed -i 's/post_max_size = .*/post_max_size = 2048M/' "$PHP_INI"
+    sed -i 's/memory_limit = .*/memory_limit = 1024M/' "$PHP_INI"
 fi
 
 # 4. INSTALAÇÃO DO PHPMYADMIN (ZIP)
@@ -67,7 +70,7 @@ cd /tmp
 rm -f *.sql
 wget -q "https://raw.githubusercontent.com/Jeanroot/painel-cs-files/main/BancoDados/acessos.sql" -O acessos.sql
 wget -q "https://raw.githubusercontent.com/Jeanroot/painel-cs-files/main/BancoDados/geral.sql" -O geral.sql
-wget -q "https://raw.githubusercontent.com/Jeanroot/painel-cs-files/main/BancoDados/user.sql" -O user.sql
+wget -q "https://github.com/Jeanroot/painel-cs-files/releases/download/v1.0/user.sql" -O user.sql
 
 for file in *.sql; do
     if [ -f "$file" ]; then
@@ -75,6 +78,7 @@ for file in *.sql; do
         sed -i -E '/CREATE DATABASE/d' "$file"
         sed -i -E '/USE `/d' "$file"
         sed -i 's/DEFINER=`[^` ]*`@`[^` ]*`//g' "$file"
+        sed -i 's/utf8mb4_uca1400_ai_ci/utf8mb4_general_ci/g' "$file"
         sed -i '1s/^/SET sql_mode="";\nSET FOREIGN_KEY_CHECKS=0;\n/' "$file"
         echo "SET FOREIGN_KEY_CHECKS=1;" >> "$file"
     fi
@@ -89,20 +93,20 @@ if [ -s "geral.sql" ]; then mysql geral < geral.sql; fi
 if [ -s "user.sql" ]; then mysql user < user.sql; fi
 if [ -s "acessos.sql" ]; then mysql acessos < acessos.sql; fi
 
-mysql -e "CREATE USER IF NOT EXISTS 'admin'@'localhost' IDENTIFIED BY '102030#';"
-mysql -e "ALTER USER 'admin'@'localhost' IDENTIFIED BY '102030#';"
-mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+mysql -e "CREATE USER IF NOT EXISTS 'painelcs5.0'@'localhost' IDENTIFIED BY '102030#';"
+mysql -e "ALTER USER 'painelcs5.0'@'localhost' IDENTIFIED BY '102030#';"
+mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'painelcs5.0'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;"
 
 mkdir -p /var/www/html/painel
 cat << 'CONN' > /var/www/html/painel/conexao.php
 <?php
 date_default_timezone_set('America/Sao_Paulo');
 try {
-    $connGeral = new PDO("mysql:host=localhost;dbname=geral;charset=utf8mb4", "admin", "102030#");
+    $connGeral = new PDO("mysql:host=localhost;dbname=geral;charset=utf8mb4", "painelcs5.0", "102030#");
     $connGeral->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $connUser = new PDO("mysql:host=localhost;dbname=user;charset=utf8mb4", "admin", "102030#");
+    $connUser = new PDO("mysql:host=localhost;dbname=user;charset=utf8mb4", "painelcs5.0", "102030#");
     $connUser->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $connAcessos = new PDO("mysql:host=localhost;dbname=acessos;charset=utf8mb4", "admin", "102030#");
+    $connAcessos = new PDO("mysql:host=localhost;dbname=acessos;charset=utf8mb4", "painelcs5.0", "102030#");
     $connAcessos->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     die("<div style='background:#f8d7da; color:#721c24; padding:15px; text-align:center; border-radius:5px; font-family:sans-serif;'><b>⚠️ Erro de Banco de Dados:</b><br>" . $e->getMessage() . "</div>");
@@ -225,36 +229,8 @@ ufw allow 443/tcp > /dev/null 2>&1
 systemctl restart apache2
 systemctl restart mysql
 
-# ==========================================
-# MÓDULO INTERATIVO DE SSL (CERTBOT)
-# ==========================================
-clear
-echo "===================================================="
-echo "🔒 CONFIGURAÇÃO DE SEGURANÇA (CERTIFICADO SSL)"
-echo "===================================================="
-echo "Deseja instalar o Certificado SSL (Cadeado Verde) agora?"
-echo "AVISO: O seu dominio já deve estar apontado para o IP ($IP_VPS)."
-echo "Digite 'S' para Sim ou 'N' para Não:"
-read -r -p "-> " install_ssl
-
-if [[ "$install_ssl" =~ ^[Ss]$ ]]; then
-    echo ""
-    read -r -p "Digite o seu DOMÍNIO (ex: painel.tvsbr.top): " dominio
-    read -r -p "Digite um EMAIL para alertas do SSL: " email
-
-    echo "Instalando Certbot..."
-    apt-get install -y certbot python3-certbot-apache > /dev/null 2>&1
-
-    echo "Gerando SSL para $dominio..."
-    certbot --apache --non-interactive --agree-tos -m "$email" -d "$dominio" --redirect
-
-    systemctl restart apache2
-    URL_FINAL="https://$dominio/painel"
-    URL_BD="https://$dominio/phpmyadmin"
-else
-    URL_FINAL="http://$IP_VPS/painel"
-    URL_BD="http://$IP_VPS/phpmyadmin"
-fi
+URL_FINAL="http://$IP_VPS/painel"
+URL_BD="http://$IP_VPS/phpmyadmin"
 
 clear
 echo "===================================================="
@@ -263,8 +239,8 @@ echo "===================================================="
 echo ""
 echo "🔗 Link do Painel: $URL_FINAL"
 echo "🔗 Link do Banco:  $URL_BD"
-echo "👤 User: admin"
-echo "🔑 Senha: admin"
+echo "👤 Usuário Banco:  painelcs5.0"
+echo "🔑 Senha Banco:    102030#"
 echo ""
 echo "OBS: As tabelas do V3 já foram geradas automaticamente!"
 echo "===================================================="
